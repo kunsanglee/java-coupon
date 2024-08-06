@@ -2,9 +2,9 @@ spring:
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
     driver-class-name: org.mariadb.jdbc.Driver
-    jdbc-url: jdbc:mariadb://{{rds endpoint}}:3306/coupon?useSSL=false&serverTimezone=Asia/Seoul
-    username: {{username}}
-    password: {{password}}
+    jdbc-url: jdbc:mariadb://haeng-dong-coupon-quiz.cqsc6pyqhwww.ap-northeast-2.rds.amazonaws.com:3306/coupon?useSSL=false&serverTimezone=Asia/Seoul
+    username: admin
+    password: xpzmzhtm1!
     auto-commit: false
     connectionTimeout: 3000
     maxLifeTime: 50000

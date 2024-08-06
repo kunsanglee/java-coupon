@@ -1,7 +1,10 @@
 package coupon.coupon.domain;
 
 public enum CouponLimitType {
-    NONE, ISSUE_COUNT, USE_COUNT;
+    NONE,
+    ISSUE_COUNT,
+    USE_COUNT
+    ;
 
     public boolean isNotIssueCountLimit() {
         return this != ISSUE_COUNT;

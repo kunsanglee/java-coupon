@@ -24,7 +24,8 @@ public class MemberCouponService {
     private final List<MemberCouponObserver> observers;
 
     public MemberCouponService(MemberCouponRepository memberCouponRepository,
-                               MemberService memberService, List<MemberCouponObserver> observers) {
+                               MemberService memberService,
+                               List<MemberCouponObserver> observers) {
         this.memberCouponRepository = memberCouponRepository;
         this.memberService = memberService;
         this.observers = observers;

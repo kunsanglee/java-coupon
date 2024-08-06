@@ -20,8 +20,10 @@ public class CouponIssuer {
     private final MemberCouponRepository memberCouponRepository;
     private final List<MemberCouponObserver> observers;
 
-    public CouponIssuer(CouponService couponService, MemberService memberService,
-                        MemberCouponRepository memberCouponRepository, List<MemberCouponObserver> observers) {
+    public CouponIssuer(CouponService couponService,
+                        MemberService memberService,
+                        MemberCouponRepository memberCouponRepository,
+                        List<MemberCouponObserver> observers) {
         this.couponService = couponService;
         this.memberService = memberService;
         this.memberCouponRepository = memberCouponRepository;

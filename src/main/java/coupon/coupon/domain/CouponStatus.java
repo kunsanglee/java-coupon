@@ -1,7 +1,11 @@
 package coupon.coupon.domain;
 
 public enum CouponStatus {
-    PREPARING, ISSUABLE, EXPIRED, DISCARDED;
+    PREPARING,
+    ISSUABLE,
+    EXPIRED,
+    DISCARDED
+    ;
 
     public boolean isNotIssuable() {
         return this != ISSUABLE;

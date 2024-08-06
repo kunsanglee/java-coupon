@@ -23,34 +23,48 @@ public class Coupon {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
+
     @Column(name = "discount_amount")
     private int discountAmount;
+
     @Column(name = "minimum_order_price")
     private int minimumOrderPrice;
+
     @Column(name = "coupon_status", columnDefinition = "VARCHAR(30)")
     @Enumerated(value = EnumType.STRING)
     private CouponStatus couponStatus;
+
     @Column(name = "issuable", columnDefinition = "BOOLEAN")
     private boolean issuable;
+
     @Column(name = "usable", columnDefinition = "BOOLEAN")
     private boolean usable;
+
     @Column(name = "issue_started_at", columnDefinition = "DATETIME(6)")
     private LocalDateTime issueStartedAt;
+
     @Column(name = "issue_ended_at", columnDefinition = "DATETIME(6)")
     private LocalDateTime issueEndedAt;
+
     @Column(name = "limit_type", columnDefinition = "VARCHAR(20)")
     @Enumerated(value = EnumType.STRING)
     private CouponLimitType limitType;
+
     @Column(name = "issue_limit")
     private Long issueLimit;
+
     @Column(name = "issue_count")
     private Long issueCount;
+
     @Column(name = "use_limit")
     private Long useLimit;
+
     @Column(name = "use_count")
     private Long useCount;
+
     @Column(name = "created_at", columnDefinition = "DATETIME(6)")
     private LocalDateTime createdAt;
+
     @Column(name = "modified_at", columnDefinition = "DATETIME(6)")
     private LocalDateTime modifiedAt;
 

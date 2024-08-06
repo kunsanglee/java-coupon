@@ -23,16 +23,22 @@ public class MonthlyMemberBenefit {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
+
     @Column(name = "member_id")
     private Long memberId;
+
     @Column(name = "year", columnDefinition = "SMALLINT")
     private Year year;
+
     @Column(name = "month", columnDefinition = "SMALLINT")
     private Month month;
+
     @Column(name = "coupon_discount_amount")
     private int couponDiscountAmount;
+
     @Column(name = "created_at", columnDefinition = "DATETIME(6)")
     private LocalDateTime createdAt;
+
     @Column(name = "modified_at", columnDefinition = "DATETIME(6)")
     private LocalDateTime modifiedAt;
 

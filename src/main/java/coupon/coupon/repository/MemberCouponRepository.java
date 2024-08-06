@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 @Transactional
 public interface MemberCouponRepository extends JpaRepository<MemberCoupon, Long> {
+
     List<MemberCoupon> findByMemberIdAndUsedAndUseEndedAtAfter(Long memberId, boolean used, LocalDateTime now);
 
     Long countByCoupon_Id(Long couponId);
@@ -22,6 +23,7 @@ public interface MemberCouponRepository extends JpaRepository<MemberCoupon, Long
 
     @Modifying
     @Query("update MemberCoupon mc set mc.used = :used, mc.usedAt = :usedAt where mc.id in :memberCouponIds")
-    void updateUsedAndUsedAt(@Param("memberCouponIds") List<Long> memberCouponIds, @Param("used") boolean used,
+    void updateUsedAndUsedAt(@Param("memberCouponIds") List<Long> memberCouponIds,
+                             @Param("used") boolean used,
                              @Param("usedAt") LocalDateTime usedAt);
 }

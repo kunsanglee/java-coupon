@@ -28,19 +28,26 @@ public class MemberCoupon {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     @Column(name = "member_id")
     private Long memberId;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "coupon_id")
     private Coupon coupon;
+
     @Column(name = "issued_at", columnDefinition = "DATETIME(6)")
     private LocalDateTime issuedAt;
+
     @Column(name = "use_ended_at", columnDefinition = "DATETIME(6)")
     private LocalDateTime useEndedAt;
+
     @Column(name = "used", columnDefinition = "BOOLEAN")
     private boolean used;
+
     @Column(name = "used_at", columnDefinition = "DATETIME(6)")
     private LocalDateTime usedAt;
+
     @Column(name = "modified_at", columnDefinition = "DATETIME(6)")
     private LocalDateTime modifiedAt;
 

@@ -141,9 +141,10 @@ public class IndexPerformanceTest {
         assertThat(averageElapsedTime).isLessThanOrEqualTo(100L);
     }
 
-    private void executeMultipleRequests(AtomicBoolean running, AtomicInteger requestCount, AtomicLong totalElapsedTime,
-                                         Runnable runnable)
-            throws InterruptedException {
+    private void executeMultipleRequests(AtomicBoolean running,
+                                         AtomicInteger requestCount,
+                                         AtomicLong totalElapsedTime,
+                                         Runnable runnable) throws InterruptedException {
         ExecutorService executorService = Executors.newFixedThreadPool(THREAD_COUNT);
         for (int i = 0; i < THREAD_COUNT; i++) {
             executorService.execute(() -> executeRequest(running, requestCount, totalElapsedTime, runnable));
@@ -158,7 +159,9 @@ public class IndexPerformanceTest {
         executorService.awaitTermination(10, TimeUnit.SECONDS);
     }
 
-    private void executeRequest(AtomicBoolean running, AtomicInteger requestCount, AtomicLong totalElapsedTime,
+    private void executeRequest(AtomicBoolean running,
+                                AtomicInteger requestCount,
+                                AtomicLong totalElapsedTime,
                                 Runnable runnable) {
         while (!running.get()) {
             // 요청을 시작할 때까지 대기한다.
