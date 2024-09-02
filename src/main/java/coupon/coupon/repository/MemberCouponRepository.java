@@ -20,7 +20,6 @@ public interface MemberCouponRepository extends JpaRepository<MemberCoupon, Long
 
     Long countByCoupon_IdAndUsed(Long couponId, boolean used);
 
-
     @Modifying
     @Query("update MemberCoupon mc set mc.used = :used, mc.usedAt = :usedAt where mc.id in :memberCouponIds")
     void updateUsedAndUsedAt(@Param("memberCouponIds") List<Long> memberCouponIds,
