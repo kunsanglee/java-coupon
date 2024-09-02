@@ -410,4 +410,442 @@ public class IndexPerformanceTest {
         totalElapsedTime.addAndGet(elapsedTime);
     }
 
+    /* Console
+    -- IndexPerformanceTest - 쿠폰의_사용_수량_조회
+# explain index type : ref
+explain select SQL_NO_CACHE count(*) from member_coupon mc where mc.coupon_id = 1;
+explain select SQL_NO_CACHE count(*) from coupon c where c.id = 1;
+
+# Long countByCoupon_IdAndUsed(Long couponId, boolean used);
+explain select * from member_coupon mc where mc.coupon_id = 2 and mc.used = true;
+show index from member_coupon;
+SET FOREIGN_KEY_CHECKS = 0;
+SET FOREIGN_KEY_CHECKS = 1;
+
+ALTER TABLE member_coupon DROP FOREIGN KEY FKkxw7ja7v55gk4a368w3gs6s0j;  -- fk_name을 실제 외래 키 이름으로 변경하세요.
+create index idx_coupon_used on member_coupon(coupon_id, used);
+alter table member_coupon add constraint FKkxw7ja7v55gk4a368w3gs6s0j foreign key (coupon_id) references coupon (id);
+explain select SQL_NO_CACHE * from member_coupon mc where mc.coupon_id = 1;
+
+-- IndexPerformanceTest - 현재_발급_가능한_쿠폰_조회
+# List<Coupon> findAllByIssuableAndCouponStatusAndIssueStartedAtLessThanAndIssueEndedAtGreaterThan(boolean issuable,
+#                                                                                                      CouponStatus couponStatus,
+#                                                                                                      LocalDateTime issueStartedAt,
+#                                                                                                      LocalDateTime issueEndedAt);
+
+show index from coupon;
+
+create index idx_issuable_coupon_status_issue_started_at_issue_ended_at ON coupon (issuable, coupon_status, issue_started_at, issue_ended_at); -- range
+explain select SQL_NO_CACHE * from coupon c
+                                       use index (idx_issuable_coupon_status_issue_started_at_issue_ended_at)
+        where c.issuable = false and c.coupon_status = 'EXPIRED'
+          and c.issue_started_at > '2018-12-31 00:00:00.000000'
+          and c.issue_ended_at < '2019-02-01 00:00:00.000000';
+
+explain analyze select SQL_NO_CACHE * from coupon c
+                                       use index (idx_issuable_coupon_status_issue_started_at_issue_ended_at)
+        where c.issuable = false and c.coupon_status = 'EXPIRED'
+          and c.issue_started_at > '2018-12-31 00:00:00.000000'
+          and c.issue_ended_at < '2019-02-01 00:00:00.000000';
+# -> Index range scan on c using idx_issuable_coupon_status_issue_started_at_issue_ended_at over (issuable = 0 AND coupon_status = 'EXPIRED' AND '2018-12-31 00:00:00.000000' < issue_started_at), with index condition: ((c.coupon_status = 'EXPIRED') and (c.issuable = false) and (c.issue_started_at > TIMESTAMP'2018-12-31 00:00:00') and (c.issue_ended_at < TIMESTAMP'2019-02-01 00:00:00'))  (cost=510 rows=1132) (actual time=0.0846..1.14 rows=6 loops=1)
+# Total request count: 10821
+# Total elapsed time: 100045ms
+# Average elapsed time: 9ms
+
+create index idx_coupon_status_issuable_issue_started_at_issue_ended_at ON coupon (coupon_status, issuable, issue_started_at, issue_ended_at); -- range
+explain select SQL_NO_CACHE * from coupon c use index (idx_coupon_status_issuable_issue_started_at_issue_ended_at)
+                              where c.coupon_status = 'EXPIRED'
+                                and c.issuable = false
+                                and c.issue_started_at > '2018-12-31 00:00:00.000000'
+                                and c.issue_ended_at < '2019-02-01 00:00:00.000000';
+explain analyze select SQL_NO_CACHE * from coupon c use index (idx_coupon_status_issuable_issue_started_at_issue_ended_at)
+        where c.coupon_status = 'EXPIRED'
+          and c.issuable = false
+          and c.issue_started_at > '2018-12-31 00:00:00.000000'
+          and c.issue_ended_at < '2019-02-01 00:00:00.000000';
+# -> Index range scan on c using idx_coupon_status_issuable_issue_started_at_issue_ended_at over (coupon_status = 'EXPIRED' AND issuable = 0 AND '2018-12-31 00:00:00.000000' < issue_started_at), with index condition: ((c.issuable = false) and (c.coupon_status = 'EXPIRED') and (c.issue_started_at > TIMESTAMP'2018-12-31 00:00:00') and (c.issue_ended_at < TIMESTAMP'2019-02-01 00:00:00'))  (cost=510 rows=1132) (actual time=0.0424..4.14 rows=6 loops=1)
+# Total request count: 10469
+# Total elapsed time: 100095ms
+# Average elapsed time: 9ms
+
+create index idx_issue_started_at_issue_ended_at_coupon_status_issuable ON coupon (issue_started_at, issue_ended_at, coupon_status, issuable); -- type ALL
+explain select SQL_NO_CACHE * from coupon c
+                                       use index (idx_issue_started_at_issue_ended_at_coupon_status_issuable)
+        where c.issue_started_at > '2018-12-31 00:00:00.000000'
+          and c.issue_ended_at < '2019-02-01 00:00:00.000000'
+          and c.coupon_status = 'EXPIRED' and c.issuable = false;
+
+explain analyze select SQL_NO_CACHE * from coupon c
+                                       use index (idx_issue_started_at_issue_ended_at_coupon_status_issuable)
+        where c.issue_started_at > '2018-12-31 00:00:00.000000'
+          and c.issue_ended_at < '2019-02-01 00:00:00.000000'
+          and c.coupon_status = 'EXPIRED' and c.issuable = false;
+
+# -> Filter: ((c.issuable = false) and (c.coupon_status = 'EXPIRED') and (c.issue_started_at > TIMESTAMP'2018-12-31 00:00:00') and (c.issue_ended_at < TIMESTAMP'2019-02-01 00:00:00'))  (cost=32839 rows=536) (actual time=0.258..187 rows=6 loops=1)
+#     -> Table scan on c  (cost=32839 rows=321576) (actual time=0.2..174 rows=351160 loops=1)
+# Total request count: 463
+# Total elapsed time: 101073ms
+# Average elapsed time: 218ms
+# 조회 쿼리 사용시 인덱스를 태우려면 최소한 첫번째 인덱스 조건은 조회조건에 포함되어야만 합니다.
+# 첫번째 인덱스 컬럼이 조회 쿼리에 없으면 인덱스를 타지 않는다는 점을 기억하시면 됩니다.
+
+#정리
+# 인덱스 컬럼 순서: 인덱스가 정의된 순서에 따라 쿼리의 성능이 달라지므로,
+# 범위 조건이 있는 컬럼은 인덱스의 마지막에 위치해야 합니다.
+# WHERE 조건의 순서: SQL 쿼리의 WHERE 절에서 조건의 순서는 실제 인덱스 사용에 영향을 미치지 않습니다.
+# 즉, 쿼리에서 조건을 어떤 순서로 나열하든 관계없이, 인덱스의 정의된 순서가 중요합니다.
+
+
+create index idx_issuable_coupon_status ON coupon (issuable, coupon_status); -- ref
+explain select SQL_NO_CACHE * from coupon c
+                                       use index (idx_issuable_coupon_status)
+        where c.issuable = false and c.coupon_status = 'EXPIRED'
+          and c.issue_started_at > '2018-12-31 00:00:00.000000'
+          and c.issue_ended_at < '2019-02-01 00:00:00.000000';
+
+explain analyze select SQL_NO_CACHE * from coupon c
+                                       use index (idx_issuable_coupon_status)
+        where c.issuable = false and c.coupon_status = 'EXPIRED'
+          and c.issue_started_at > '2018-12-31 00:00:00.000000'
+          and c.issue_ended_at < '2019-02-01 00:00:00.000000';
+# -> Filter: ((c.issue_started_at > TIMESTAMP'2018-12-31 00:00:00') and (c.issue_ended_at < TIMESTAMP'2019-02-01 00:00:00'))  (cost=296 rows=126) (actual time=0.851..6.75 rows=6 loops=1)
+#     -> Index lookup on c using idx_issuable_coupon_status (issuable=false, coupon_status='EXPIRED')  (cost=296 rows=1132) (actual time=0.848..6.52 rows=1132 loops=1)
+# Total request count: 3596
+# Total elapsed time: 100117ms
+# Average elapsed time: 27ms
+
+create index idx_coupon_status_issuable ON coupon (coupon_status, issuable); -- ref
+explain select SQL_NO_CACHE * from coupon c
+                                       use index (idx_coupon_status_issuable)
+        where c.coupon_status = 'EXPIRED' and c.issuable = false
+          and c.issue_started_at > '2018-12-31 00:00:00.000000'
+          and c.issue_ended_at < '2019-02-01 00:00:00.000000';
+
+explain analyze select SQL_NO_CACHE * from coupon c
+                                       use index (idx_coupon_status_issuable)
+        where c.coupon_status = 'EXPIRED' and c.issuable = false
+          and c.issue_started_at > '2018-12-31 00:00:00.000000'
+          and c.issue_ended_at < '2019-02-01 00:00:00.000000';
+# -> Filter: ((c.issue_started_at > TIMESTAMP'2018-12-31 00:00:00') and (c.issue_ended_at < TIMESTAMP'2019-02-01 00:00:00'))  (cost=296 rows=126) (actual time=1.07..18.3 rows=6 loops=1)
+#     -> Index lookup on c using idx_coupon_status_issuable (coupon_status='EXPIRED', issuable=false)  (cost=296 rows=1132) (actual time=1.07..18 rows=1132 loops=1)
+# Total request count: 3638
+# Total elapsed time: 100115ms
+# Average elapsed time: 27ms
+
+show index from coupon;
+
+alter table coupon
+    drop index idx_issuable_coupon_status_issue_started_at_issue_ended_at,
+    drop index idx_coupon_status_issuable_issue_started_at_issue_ended_at,
+    drop index idx_issue_started_at_issue_ended_at_coupon_status_issuable,
+    drop index idx_issuable_coupon_status,
+    drop index idx_coupon_status_issuable
+;
+#
+# EXPLAIN 명령어의 결과에서 type이 ALL이라는 것은 MySQL이 테이블의 모든 행을 스캔하고 있다는 것을 의미합니다.
+# 즉, 인덱스를 사용하지 않고 전체 테이블을 순차적으로 검색하고 있다는 뜻입니다.
+#
+# type의 의미
+# ALL: 테이블의 모든 행을 스캔합니다. 성능이 좋지 않은 방법입니다.
+# index: 인덱스만 스캔하고, 데이터 파일은 읽지 않습니다.
+# range: 인덱스의 특정 범위만 스캔합니다.
+# ref: 인덱스를 사용하여 특정 값을 찾습니다.
+# eq_ref: 주 테이블의 각 행에 대해 하나의 행만 반환합니다.
+# const: 조건이 상수로 평가되어 최적화됩니다.
+# 인덱스를 사용하지 않는 이유
+# 인덱스 없음: 해당 쿼리에 적합한 인덱스가 없기 때문에 전체 테이블을 스캔합니다.
+# 조건 최적화: WHERE 절의 조건이 복합적일 경우, 적절한 인덱스가 없으면 MySQL이 전체 스캔을 선택할 수 있습니다.
+# 인덱스 사용 비효율성: 인덱스가 있더라도, 조건에 따라 인덱스를 사용하지 않는 것이 더 빠를 때도 있습니다.
+# 개선 방법
+# 효율성을 높이기 위해, 다음과 같은 인덱스를 고려할 수 있습니다:
+#
+# coupon_status와 issuable 필드에 대한 복합 인덱스.
+# issue_started_at와 issue_ended_at을 포함한 인덱스.
+
+-- IndexPerformanceTest - 회원이_가지고_있는_사용_가능한_쿠폰_조회
+# List<MemberCoupon> findByMemberIdAndUsedAndUseEndedAtAfter(Long memberId, boolean used, LocalDateTime now);
+show index from member_coupon;
+
+select * from member_coupon;
+
+-- Cardinality 한 번에 조회
+select count(distinct id),
+       count(distinct issued_at),
+       count(distinct member_id),
+       count(distinct modified_at),
+       count(distinct use_ended_at),
+       count(distinct used),
+       count(distinct used_at),
+       count(distinct coupon_id)
+from member_coupon
+;
+
+create index idx_member on member_coupon (member_id);
+alter table member_coupon drop index idx_member;
+
+create index idx_member_use_ended_at_used on member_coupon (member_id, use_ended_at, used); -- range
+select SQL_NO_CACHE * from member_coupon mc
+                        use index (idx_member_use_ended_at_used)
+                      where mc.member_id = 1 and mc.used = false and use_ended_at <= '2024-08-31 00:00:02.024000';
+
+explain select SQL_NO_CACHE * from member_coupon mc
+                                       use index (idx_member_use_ended_at_used)
+        where mc.member_id = 1 and mc.used = false and use_ended_at <= '2024-08-31 00:00:02.024000';
+
+explain select SQL_NO_CACHE * from member_coupon mc
+#                                        use index (idx_member_use_ended_at_used)
+        where mc.member_id = 1 and mc.used = false and use_ended_at <= '2024-08-31 00:00:02.024000';
+
+explain analyze select SQL_NO_CACHE * from member_coupon mc
+                                       use index (idx_member_use_ended_at_used)
+        where mc.member_id = 1 and mc.used = false and use_ended_at <= '2024-08-31 00:00:02.024000';
+# -> Index range scan on mc using idx_member_use_ended_at_used over (member_id = 1 AND NULL <= use_ended_at <= '2024-08-31 00:00:02.024000' AND used <= 0), with index condition: ((mc.used = false) and (mc.member_id = 1) and (mc.use_ended_at <= TIMESTAMP'2024-08-31 00:00:02.024'))  (cost=10.6 rows=23) (actual time=0.0779..0.154 rows=20 loops=1)
+# Total request count: 14705
+# Total elapsed time: 100109ms
+# Average elapsed time: 6ms
+
+create index idx_member_used_use_ended_at on member_coupon (member_id, used, use_ended_at); -- range
+select SQL_NO_CACHE * from member_coupon mc
+                      where mc.member_id = 1 and mc.used = false and use_ended_at <= '2024-08-31 00:00:02.024000';
+
+explain select SQL_NO_CACHE * from member_coupon mc
+        where mc.member_id = 1 and mc.used = false and use_ended_at <= '2024-08-31 00:00:02.024000';
+
+explain analyze select SQL_NO_CACHE * from member_coupon mc
+                where mc.member_id = 1 and mc.used = false and use_ended_at <= '2024-08-31 00:00:02.024000';
+# -> Index range scan on mc using idx_member_used_use_ended_at over (member_id = 1 AND used = 0 AND NULL < use_ended_at <= '2024-08-31 00:00:02.024000'), with index condition: ((mc.used = false) and (mc.member_id = 1) and (mc.use_ended_at <= TIMESTAMP'2024-08-31 00:00:02.024'))  (cost=9.26 rows=20) (actual time=0.0345..0.0989 rows=20 loops=1)
+# 위의 인덱스와 순서가 다른데, member_id, use_ended_at, used 순서의 인덱스가 존재할 시
+# member_id, used, use_ended_at 순서의 인덱스가 있으면 used를 먼저 설정한 인덱스를 사용한다.
+# 범위 필터인 use_ended_at를 나중에 지정한 것이 더 유리하다.
+
+select SQL_NO_CACHE * from member_coupon mc
+                               use index (idx_member_used_use_ended_at)
+where mc.member_id = 1 and mc.used = false and use_ended_at <= '2024-08-31 00:00:02.024000';
+
+explain select SQL_NO_CACHE * from member_coupon mc
+                                       use index (idx_member_used_use_ended_at)
+        where mc.member_id = 1 and mc.used = false and use_ended_at <= '2024-08-31 00:00:02.024000';
+
+explain analyze select SQL_NO_CACHE * from member_coupon mc
+                                               use index (idx_member_used_use_ended_at)
+                where mc.member_id = 1 and mc.used = false and use_ended_at <= '2024-08-31 00:00:02.024000';
+
+show index from member_coupon;
+alter table member_coupon drop index idx_member_use_ended_at_used;
+# idx_member_use_ended_at_used 인덱스를 지우고, idx_member_used_use_ended_at 인덱스를 사용하게 한 후 다시 측정
+# Total request count: 14493
+# Total elapsed time: 100023ms
+# Average elapsed time: 6ms
+
+-- 월별_쿠폰_할인을_가장_많이_받은_회원_조회
+# Optional<MonthlyMemberBenefit> findTopByYearAndMonthOrderByCouponDiscountAmountDesc(Year year, Month month);
+select *
+from monthly_member_benefit m
+where m.year = 2021
+  and m.month = 1
+order by m.coupon_discount_amount desc
+limit 1
+;
+
+select count(distinct id),
+       count(distinct coupon_discount_amount),
+       count(distinct created_at),
+       count(distinct member_id),
+       count(distinct modified_at),
+       count(distinct month),
+       count(distinct year)
+from monthly_member_benefit
+;
+
+create index idx_coupon_discount_amount_year_month on monthly_member_benefit (coupon_discount_amount, year, month); -- index
+show index from monthly_member_benefit;
+
+select SQL_NO_CACHE *
+from monthly_member_benefit m
+where m.year = 2021
+  and m.month = 1
+order by m.coupon_discount_amount desc
+limit 1
+;
+
+explain select SQL_NO_CACHE *
+        from monthly_member_benefit m
+        where m.year = 2021
+          and m.month = 1
+        order by m.coupon_discount_amount desc
+        limit 1
+;
+
+explain analyze select SQL_NO_CACHE *
+                from monthly_member_benefit m
+                where m.year = 2021
+                  and m.month = 1
+                order by m.coupon_discount_amount desc
+                limit 1
+;
+
+explain select SQL_NO_CACHE *
+        from monthly_member_benefit m
+        use index (idx_coupon_discount_amount_year_month)
+        where m.year = 2021
+          and m.month = 1
+        order by m.coupon_discount_amount desc
+        limit 1
+; -- index -> 인덱스 풀스캔
+
+explain analyze select SQL_NO_CACHE *
+                from monthly_member_benefit m
+                 use index (idx_coupon_discount_amount_year_month)
+                where m.year = 2021
+                  and m.month = 1
+                order by m.coupon_discount_amount desc
+                limit 1
+;
+
+# -> Limit: 1 row(s)  (cost=0.501 rows=0.05) (actual time=828..828 rows=0 loops=1)
+#     -> Filter: ((m.`month` = 1) and (m.`year` = 2021))  (cost=0.501 rows=0.05) (actual time=828..828 rows=0 loops=1)
+#         -> Index scan on m using idx_coupon_discount_amount_year_month (reverse)  (cost=0.501 rows=1) (actual time=0.0967..805 rows=688440 loops=1)
+# Total request count: 10369
+# Total elapsed time: 100047ms
+# Average elapsed time: 9ms
+
+create index idx_month_year_coupon_discount_amount on monthly_member_benefit (month, year, coupon_discount_amount);
+
+select SQL_NO_CACHE *
+                from monthly_member_benefit m
+                         use index (idx_month_year_coupon_discount_amount)
+                where m.year = 2021
+                  and m.month = 1
+                order by m.coupon_discount_amount desc
+                limit 1
+;
+
+explain select SQL_NO_CACHE *
+                from monthly_member_benefit m
+                         use index (idx_month_year_coupon_discount_amount)
+                where m.year = 2021
+                  and m.month = 1
+                order by m.coupon_discount_amount desc
+                limit 1
+; -- ref
+
+explain analyze select SQL_NO_CACHE *
+                from monthly_member_benefit m
+                use index (idx_month_year_coupon_discount_amount)
+                where m.year = 2021
+                  and m.month = 1
+                order by m.coupon_discount_amount desc
+                limit 1
+;
+
+-- 블로그 정리 시작
+
+show index from member_coupon;
+alter table member_coupon drop index idx_coupon_used;
+
+ALTER TABLE member_coupon DROP FOREIGN KEY FKkxw7ja7v55gk4a368w3gs6s0j;
+ALTER TABLE member_coupon DROP INDEX FKkxw7ja7v55gk4a368w3gs6s0j;
+
+show create table member_coupon;
+ALTER TABLE member_coupon
+    ADD CONSTRAINT FKkxw7ja7v55gk4a368w3gs6s0j FOREIGN KEY (coupon_id) REFERENCES coupon (id);
+
+ALTER TABLE member_coupon
+    drop CONSTRAINT FKkxw7ja7v55gk4a368w3gs6s0j;
+
+explain select count(*) from member_coupon mc
+        where mc.coupon_id = 1;
+
+explain analyze select count(*) from member_coupon mc
+        where mc.coupon_id = 1;
+
+show index from member_coupon;
+
+explain analyze select count(*)
+        from member_coupon mc
+        where mc.coupon_id = 1
+          and mc.used = false;
+
+select count(*) from member_coupon mc
+where mc.used = true;
+
+select count(*) from member_coupon mc
+where mc.used = false;
+
+select count(distinct used) from member_coupon;
+
+create index idx_coupon_used on member_coupon (coupon_id, used);
+alter table member_coupon drop index idx_coupon_used;
+
+
+select * from coupon c
+where c.issuable = false
+  and c.coupon_status = 'EXPIRED'
+  and c.issue_started_at < '2019-02-01 00:00:00.000000'
+  and c.issue_ended_at > '2019-01-01 00:00:00.00000';
+
+show index from coupon;
+
+select count(*) from coupon;
+
+explain analyze select * from coupon c
+        where c.issuable = false
+          and c.coupon_status = 'EXPIRED'
+          and c.issue_started_at < '2019-02-01 00:00:00.000000'
+          and c.issue_ended_at > '2019-01-01 00:00:00.00000';
+
+create index idx_issuable_coupon_status_issue_started_at_issue_ended_at
+    on coupon (issuable, coupon_status, issue_started_at, issue_ended_at);
+
+create index idx_issue_started_at_issue_ended_at_coupon_status_issuable
+    on coupon (issue_started_at, issue_ended_at, coupon_status, issuable);
+
+explain analyze select * from coupon c
+                 use index (idx_issue_started_at_issue_ended_at_coupon_status_issuable)
+        where c.issuable = false
+          and c.coupon_status = 'EXPIRED'
+          and c.issue_started_at < '2019-02-01 00:00:00.000000'
+          and c.issue_ended_at > '2019-01-01 00:00:00.00000';
+
+show index from coupon;
+alter table coupon drop index idx_issue_started_at_issue_ended_at_coupon_status_issuable;
+
+show index from member_coupon;
+
+explain analyze select * from member_coupon mc
+where mc.member_id = 1
+and mc.used = true
+and mc.use_ended_at > '2019-01-12 00:38:50.000000';
+
+select count(distinct mc.member_id) member_id,
+       count(distinct mc.used) used,
+       count(distinct mc.use_ended_at) use_ended_at
+from member_coupon mc;
+
+create index idx_member_use_ended_at on member_coupon (member_id, use_ended_at);
+
+create index idx_member_used_use_ended_at on member_coupon (member_id, used, use_ended_at);
+
+select * from monthly_member_benefit m
+where m.year = 2019
+  and m.month = 1
+order by coupon_discount_amount desc
+limit 1;
+
+select * from monthly_member_benefit;
+
+show index from monthly_member_benefit;
+
+create index idx_year_month_coupon_discount_amount on monthly_member_benefit (year, month, coupon_discount_amount);
+
+create index idx_month_year_coupon_discount_amount on monthly_member_benefit (month, year, coupon_discount_amount);
+
+explain analyze select * from monthly_member_benefit m
+where m.year = 2019
+  and m.month = 1
+order by coupon_discount_amount desc
+limit 1;
+
+    /
+     */
 }
